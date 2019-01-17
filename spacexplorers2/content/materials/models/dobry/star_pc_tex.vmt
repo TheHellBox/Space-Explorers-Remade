@@ -1,0 +1,5 @@
+"VertexLitGeneric"
+{
+	"$basetexture" "models/dobry/star_pc_tex"
+	"$bumpmap" "models/dobry/star_pc_normal"
+}
