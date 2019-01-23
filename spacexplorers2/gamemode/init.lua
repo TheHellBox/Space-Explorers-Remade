@@ -11,19 +11,23 @@ include("net_reg.lua")
 
 include("lib/events.lua")
 include("lib/player.lua")
+include("lib/perlin.lua")
 
 include("shared/enums.lua")
 include("shared/roles.lua")
+include("shared/config.lua")
 
 include("base/roles.lua")
 include("base/game_state.lua")
 
 include("base/modules/piloting.lua")
+include("base/modules/lifesupport.lua")
 
 include("base/ship/ship.lua")
 
 -- We have to manualy make CSLua files in lib folder
 AddCSLuaFile("lib/cl_events.lua")
+AddCSLuaFile("lib/perlin.lua")
 
 -- You can use this function to add all CSLua stuff, including subfolders. I use it for client/ folder
 function se_addcslua_r(dir)

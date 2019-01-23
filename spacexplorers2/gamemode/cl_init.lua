@@ -1,6 +1,9 @@
 include("shared/enums.lua")
 include("shared/roles.lua")
+
 include("lib/cl_events.lua")
+include("lib/perlin.lua")
+
 include("client/role_menu.lua")
 include("client/dbase.lua")
 include("client/game_state/game_state.lua")

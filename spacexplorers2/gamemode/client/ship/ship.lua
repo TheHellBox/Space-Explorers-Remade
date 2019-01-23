@@ -20,6 +20,10 @@ hook.Add("se_event_ship_pos_update", "se_update_ship_pos", function(position, ro
   print(position)
   se_ship.future_position = position
   se_ship.future_rotation = rotation
+
+  se_move_x = math.floor( se_ship.position[1] / 1024 )
+  se_move_y = math.floor( se_ship.position[2] / 1024 )
+  --se_gen_perlin_squrere({-se_move_x, -se_move_y}, 31)
 end)
 
 

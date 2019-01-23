@@ -121,13 +121,29 @@ function se_draw_planet(planet_size, position, color, planet_type)
   -- Set shadow material
   render.SetMaterial(se_planet_shadow)
   cam.PushModelMatrix(shadow_model)
-    render.DrawSphere( Vector(), planet_size * 1.01, 30, 30, Color(255, 255, 255, 255) )
+    render.DrawSphere( Vector(), planet_size * 1.02, 30, 30, Color(255, 255, 255, 255) )
+  cam.PopModelMatrix()
+end
+
+function se_draw_perlin_squrere(view)
+  render.SetBlend( 0 )
+  -- View matrix specific for star
+  local view = Matrix()
+  view:Translate(Vector(-14422,14973,4))
+  view:Rotate( se_ship.rotation )
+  view:Translate( se_ship.position )
+  local poly_mat = se_get_model_matrix(Vector(-se_move_x * 1024 - 1024 * 20, -se_move_y * 1024 - 1024 * 20, -2000), Angle(), view)
+  render.SetMaterial(se_star_material)
+  cam.PushModelMatrix(poly_mat)
+    if !se_terrain_mesh then return end
+    se_terrain_mesh:BuildFromTriangles( se_terrain_polys )
+    se_terrain_mesh:Draw()
   cam.PopModelMatrix()
 end
 
 hook.Add("PostDrawOpaqueRenderables", "se_render_map", function()
   if !se_ship then return end
-  local player_on_ship = LocalPlayer():GetPos():WithinAABox( Vector(-15799,14366,518), Vector(-13116,15641,-547) )
+  local player_on_ship = true--LocalPlayer():GetPos():WithinAABox( Vector(-15799,14366,518), Vector(-13116,15641,-547) )
   if !player_on_ship then return end
   local view = Matrix()
   view:Translate(Vector(-14422,14973,4) - Vector(-14638,11969,-1102))
@@ -148,4 +164,5 @@ hook.Add("PostDrawOpaqueRenderables", "se_render_map", function()
       se_draw_planet(v.size, v.position, v.color, v.planet_type)
     end
   end
+  --se_draw_perlin_squrere(view)
 end)
