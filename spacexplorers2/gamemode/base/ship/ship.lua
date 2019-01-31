@@ -1,3 +1,5 @@
+include("power_managment.lua")
+
 function se_init_ship()
   if !se_ship then
     se_ship = {
@@ -10,6 +12,9 @@ function se_init_ship()
       -- Oxygen
       max_oxygen = se_ship_max_oxygen,
       oxygen = se_ship_max_oxygen,
+      -- Power
+      max_power = 10,
+      power_used = 0,
       -- Movement vectors.
       curret_vector = Vector(),
       future_vector = Vector(),
@@ -23,9 +28,19 @@ function se_init_ship()
     se_ship_init_modules()
   end
 end
+
 -- Check if ship exists. If not, reinit it
 function se_ship_exists()
   if !se_ship then se_init_ship() return false else return true end
+end
+
+function se_count_power_usage()
+  if !se_ship_exists() then return end
+  local usage = 0
+  for k, v in pairs(se_ship.modules) do
+    usage = usage + v.energy
+  end
+  return usage
 end
 
 function se_ship_init_modules()
@@ -33,8 +48,8 @@ function se_ship_init_modules()
   se_ship.modules = {
     LifeSupport = {
       health = se_ship_max_module_health,
-      energy_max = 2,
-      energy = 2,
+      energy_max = 3,
+      energy = 3,
     },
     Piloting = {
       health = se_ship_max_module_health,
@@ -43,18 +58,24 @@ function se_ship_init_modules()
     },
     Weapons = {
       health = se_ship_max_module_health,
-      energy_max = 4,
-      energy = 4,
-    },
-    Generator = {
-      health = se_ship_max_module_health,
-      energy_max = 0,
-      energy = 0,
+      energy_max = 5,
+      energy = 3,
     },
   }
+  se_ship.power_used = se_count_power_usage()
 end
 
 se_init_ship()
+
+function se_add_power_to_module(ship_module_name, amount)
+  if !se_ship_exists() then return end
+  local ship_module = se_ship.modules[ship_module_name]
+  if !ship_module then return end
+  local power_to_add = math.Clamp(se_ship.max_power - se_ship.power_used, -999, amount)
+  ship_module.energy = math.Clamp(ship_module.energy + power_to_add, 0, ship_module.energy_max)
+  se_ship.power_used = se_count_power_usage()
+  se_send_event("ship_module_update", {ship_module_name, se_ship.modules[ship_module_name]})
+end
 
 function se_get_oxygen()
   if !se_ship_exists() then return end
@@ -125,34 +146,6 @@ function se_ship_modules_update()
   se_lifesupport_update()
 end
 
-function se_update_ship_pos()
-  -- Lerp position/rotation to make movement smooth and emitate physics
-  se_ship.curret_vector = LerpVector(0.01, se_ship.curret_vector, se_ship.future_vector)
-  se_ship.curret_rotation = LerpAngle(0.01, se_ship.curret_rotation, se_ship.future_rotation)
-  -- I use matrix to get forward
-  local mat = Matrix()
-  mat:SetAngles(se_ship.rotation)
-  mat:Invert()
-  local forward = mat:GetForward()
-  -- Apply position
-  se_ship.position:Add(se_ship.curret_vector[1] * forward)
-  -- Apply rotation
-  se_ship.rotation:Add(se_ship.curret_rotation)
-  -- Interate over all objects to check collision
-  for k, v in pairs(se_game_state.Game_Map) do
-    -- Check if we intersect object
-    local collision = util.IntersectRayWithOBB( -v.position, Vector(10), se_ship.position, -se_ship.rotation, Vector(-1000, -500, -500), Vector(1000, 500, 500) )
-    -- If we itersect object
-    if collision and se_pilot_chair then
-      -- Emit sound
-      se_pilot_chair:EmitSound( "vehicles/airboat/pontoon_impact_hard1.wav", 140, 50 + math.abs(se_ship.curret_vector:Length() * 20), 1, CHAN_AUTO )
-      -- And invert position vector
-      se_ship.curret_vector = -se_ship.curret_vector
-      se_ship.curret_rotation = -se_ship.curret_rotation
-    end
-  end
-end
-
 hook.Add("Think", "se_ship_think", function()
   local time = CurTime()
   se_update_ship_pos()
@@ -165,6 +158,6 @@ end)
 hook.Add("Initialize", "se_ship_update_timer", function()
   -- I hope it will never give us an error
   timer.Create("se_ship_controls_timer", 0.1, 0, function()
-    se_send_event("ship_pos_update", {{se_ship.position.x, se_ship.position.y, se_ship.position.z}, {se_ship.rotation.x, se_ship.rotation.y, se_ship.rotation.z}})
+    se_send_event("ship_pos_update", {{se_ship.position.x, se_ship.position.y, se_ship.position.z}, {se_ship.rotation.x, se_ship.rotation.y, se_ship.rotation.z}}, nil, true)
   end)
 end)

@@ -4,12 +4,13 @@ include("shared/roles.lua")
 include("lib/cl_events.lua")
 include("lib/perlin.lua")
 
+include("client/3d2dgui/main.lua")
 include("client/role_menu.lua")
 include("client/dbase.lua")
 include("client/game_state/game_state.lua")
 include("client/map_render/map.lua")
 include("client/ship/ship.lua")
-include("client/terminals/terminal.lua")
+include("client/hud/hud.lua")
 
 -- NOTE: Move all fonts init to special file instead of here.
 

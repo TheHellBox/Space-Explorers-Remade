@@ -1,6 +1,14 @@
-net.Receive("se_event", function()
+net.Receive("se_event", function(len)
   local event = net.ReadString()
-  local args  = net.ReadTable()
+  local compress = net.ReadBool()
+  local args  = {}
+  if compress then
+    local len = net.ReadInt(32)
+    args  = net.ReadData(len)
+    args = util.JSONToTable( util.Decompress( args ) )
+  else
+    args  = net.ReadTable()
+  end
   hook.Run("se_event_"..event, unpack(args))
 end)
 

@@ -55,6 +55,35 @@ function se_spawn_pilot_chair()
   se_pilot_chair = seat
 end
 
+function se_update_ship_pos()
+  local efficiency = se_get_module_efficiency("Piloting")
+  -- Lerp position/rotation to make movement smooth and emitate physics
+  se_ship.curret_vector = LerpVector(0.01, se_ship.curret_vector, se_ship.future_vector)
+  se_ship.curret_rotation = LerpAngle(0.01, se_ship.curret_rotation, se_ship.future_rotation)
+  -- I use matrix to get forward
+  local mat = Matrix()
+  mat:SetAngles(se_ship.rotation)
+  mat:Invert()
+  local forward = mat:GetForward()
+  -- Apply position
+  se_ship.position:Add(se_ship.curret_vector[1] * forward * efficiency)
+  -- Apply rotation
+  se_ship.rotation:Add(se_ship.curret_rotation * efficiency)
+  -- Interate over all objects to check collision
+  for k, v in pairs(se_game_state.Game_Map) do
+    -- Check if we intersect object
+    local collision = util.IntersectRayWithOBB( -v.position, Vector(10), se_ship.position, -se_ship.rotation, Vector(-1000, -500, -500), Vector(1000, 500, 500) )
+    -- If we itersect object
+    if collision and se_pilot_chair then
+      -- Emit sound
+      se_pilot_chair:EmitSound( "vehicles/airboat/pontoon_impact_hard1.wav", 140, 50 + math.abs(se_ship.curret_vector:Length() * 20), 1, CHAN_AUTO )
+      -- And invert position vector
+      se_ship.curret_vector = -se_ship.curret_vector
+      se_ship.curret_rotation = -se_ship.curret_rotation
+    end
+  end
+end
+
 -- Spawn player near chair, to spawning in the roof
 hook.Add("PlayerLeaveVehicle", "se_leave_pilot_seat", function(ply, vehicle)
   if vehicle == se_pilot_chair then

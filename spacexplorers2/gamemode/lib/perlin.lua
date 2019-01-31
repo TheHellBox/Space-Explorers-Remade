@@ -24,11 +24,11 @@ perlin.gx = {}
 perlin.gy = {}
 perlin.randMax = 256
 
-function perlin:load(  )
-    for i=1,self.size do
-        self.p[i] = self.permutation[i]
-        self.p[256+i] = self.p[i]
-    end
+function perlin:load( )
+  for i=1,self.size do
+      self.p[i] = self.permutation[i]
+      self.p[256+i] = self.p[i]
+  end
 end
 
 function perlin:noise( x, y, z )
@@ -73,85 +73,57 @@ function grad( hash, x, y, z )
     return ((h % 2) == 0 and u or -u) + ((h % 3) == 0 and v or -v)
 end
 
-function se_gen_perlin_squrere(from, size)
-  se_squad = {}
-  perlin:load(  )
-  for x=0, 50 do
-    se_squad[x] = {}
-  	for y=0, 50 do
-      se_squad[x][y] = perlin:noise( (x + from[1]) / 3, (y + from[2]) / 3, 0.3 )  * 1500
-  	end
-  end
-
-  local polys = {}
-  for x=1, 30 do
-    for y=1, 30 do
-      if !se_squad[x] then return end
-      local h1 = se_squad[x][y]
-      local h2 = se_squad[x + 1][y]
-      local h3 = se_squad[x][y + 1]
-      local h4 = se_squad[x + 1][y + 1]
-      local scale = 1024
-      local x_s = x * scale
-      local y_s = y * scale
-
-      local p1 = Vector(x_s, y_s, h1)
-      local p2 = Vector(x_s, y_s + scale, h3)
-      local p3 = Vector(x_s + scale, y_s + scale, h4)
-      table.insert(polys, {
-        normal = normal,
-        pos = p1,
-        u = 0,
-        v = 0
-      })
-      table.insert(polys, {
-        normal = normal,
-        pos = p2,
-        u = 0,
-        v = 1
-      })
-      table.insert(polys, {
-        normal = normal,
-        pos = p3,
-        u = 1,
-        v = 1
-      })
-      local p1 = Vector(x_s, y_s, h1)
-      local p2 = Vector(x_s + scale, y_s + scale, h4)
-      local p3 = Vector(x_s + scale, y_s, h2)
-      table.insert(polys, {
-        normal = normal,
-        pos = p1,
-        u = 0,
-        v = 0
-      })
-      table.insert(polys, {
-        normal = normal,
-        pos = p2,
-        u = 1,
-        v = 1
-      })
-      table.insert(polys, {
-        normal = normal,
-        pos = p3,
-        u = 1,
-        v = 0
-      })
+function se_gen_perlin_squrere(from, size, scale, mul, seed)
+  perlin:load( )
+  local perlin_squad = {}
+  for x=0, size do
+    perlin_squad[x] = {}
+    for y=0, size do
+      local x_s = x / scale
+      local y_s = y / scale
+      perlin_squad[x][y] = perlin:noise( (x_s + from[1]) / 3, (y_s + from[2]) / 3, seed ) * mul
     end
   end
-  if se_terrain_mesh then se_terrain_mesh:Destroy() end
-  se_terrain_mesh = Mesh()
-  se_terrain_mesh:BuildFromTriangles(polys)
+  return perlin_squad
 end
 
-function se_calc_normal(p1, p2, p3)
-  local U = p2 - p1
-  U:Normalize()
-  local V = p3 - p1
-  V:Normalize()
-  local N = Vector()
-  N.x = U.y*V.z - U.z*V.y
-  N.y = U.z*V.x - U.z*V.z
-  N.z = U.x*V.y - U.z*V.x
-  return -N
+function se_add_perlin(a, b)
+  local result = {}
+  for x=1, 119 do
+    result[x] = {}
+    for y =1, 119 do
+      result[x][y] = a[x][y] + b[x][y]
+    end
+  end
+  return result
+end
+
+function se_gen_terrain(from, seed)
+  print("Generating terrain...")
+  local time_n = CurTime()
+  local a = se_gen_perlin_squrere({0, 0}, 120, 10, 10, seed)
+  local b = se_gen_perlin_squrere({0, 0}, 120, 5, 5, seed)
+  local c = se_gen_perlin_squrere({0, 0}, 120, 2, 2, seed)
+  local d = se_gen_perlin_squrere({0, 0}, 120, 1, 1, seed)
+  local terrain = se_add_perlin(a, b)
+  terrain = se_add_perlin(terrain, c)
+  terrain = se_add_perlin(terrain, d)
+  local time_p = CurTime()
+  print("Time elapsed: ", (time_p - time_n) )
+  return terrain
+end
+
+function se_terrian_get_h(x, y)
+  local val = se_global_terrain[x][y] or 0
+
+  return val * 160
+end
+
+function se_calc_normal(p0, p1, p2)
+  local U = p1 - p0
+  local V = p2 - p0
+
+  local N = U:Cross( V )
+  N:Normalize()
+  return N
 end

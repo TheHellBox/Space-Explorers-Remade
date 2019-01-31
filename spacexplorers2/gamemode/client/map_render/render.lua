@@ -10,7 +10,7 @@ function se_draw_skybox()
   model:Rotate( se_ship.rotation )
 
   cam.PushModelMatrix(model)
-    render.DrawSphere( Vector(), 3000, 30, 30, color )
+    render.DrawSphere( Vector(), 11000, 30, 30, color )
   cam.PopModelMatrix()
 
   render.CullMode( 0 )
@@ -51,9 +51,13 @@ function se_draw_asteroid(asteroid, view)
   se_asteroid_models[asteroid.asteroid_size]:EnableMatrix( "RenderMultiply", view * model )
   -- Draw model
   se_asteroid_models[asteroid.asteroid_size]:DrawModel()
+
+  render.SetColorModulation( 1, 1, 1 )
+
 end
 
 function se_draw_star(sun_size, position, color)
+  render.OverrideDepthEnable( false, false )
   -- Make sure that values are valid. We don't want lua errors, aren't we?
   local sun_size = sun_size or 1000
   local position = (position or Vector())
@@ -90,13 +94,14 @@ function se_draw_star(sun_size, position, color)
   cam.PushModelMatrix(outside_layer_model)
     render.DrawSphere( Vector(), sun_size * 1.02, 30, 30, Color( color.r, color.g + 50, color.b - 10, 50) )
   cam.PopModelMatrix()
+  render.OverrideDepthEnable( true, true )
 end
 
-function se_draw_planet(planet_size, position, color, planet_type)
+function se_draw_planet(planet)
   -- Make sure that values are valid. We don't want lua errors, aren't we?
-  local planet_size = planet_size or 1000
-  local position = (position or Vector())
-  local color = color or Color( 255, 100, 15, 255 )
+  local planet_size = planet.size or 1000
+  local position = (planet.position or Vector())
+  local color = planet.color or Color( 255, 100, 15, 255 )
 
   -- View matrix specific for star
   local view = Matrix()
@@ -108,12 +113,17 @@ function se_draw_planet(planet_size, position, color, planet_type)
   // convert the vector to an angle
   local angle = vec:Angle()
 
+  if planet.is_moon then
+    position = Vector()
+    position.x = planet.position.x + math.cos( math.rad((CurTime() * (500 / planet.orbit) ) % 360) + planet.start_angle) * planet.orbit
+    position.y = planet.position.y + math.sin( math.rad((CurTime() * (500 / planet.orbit)) % 360) + planet.start_angle) * planet.orbit
+  end
+
   -- Calculate view model (For shadow)
   local shadow_model = se_get_model_matrix(position, angle, view)
   local planet_model = se_get_model_matrix(position, Angle(0, (CurTime() * 1) % 360), view)
-
   -- Set material.
-  render.SetMaterial(se_planet_materials[planet_type])
+  render.SetMaterial(se_planet_materials[planet.planet_type])
   -- Draw Planet
   cam.PushModelMatrix(planet_model)
     render.DrawSphere( Vector(), planet_size, 30, 30, color )
@@ -121,7 +131,7 @@ function se_draw_planet(planet_size, position, color, planet_type)
   -- Set shadow material
   render.SetMaterial(se_planet_shadow)
   cam.PushModelMatrix(shadow_model)
-    render.DrawSphere( Vector(), planet_size * 1.02, 30, 30, Color(255, 255, 255, 255) )
+    render.DrawSphere( Vector(), planet_size * 1.1, 30, 30, Color(255, 255, 255, 255) )
   cam.PopModelMatrix()
 end
 
@@ -144,6 +154,7 @@ end
 hook.Add("PostDrawOpaqueRenderables", "se_render_map", function()
   if !se_ship then return end
   local player_on_ship = true--LocalPlayer():GetPos():WithinAABox( Vector(-15799,14366,518), Vector(-13116,15641,-547) )
+  local player_on_planet = LocalPlayer():GetPos():WithinAABox( Vector(-557,15984,4189), Vector(18006,-3418,-2446) )
   if !player_on_ship then return end
   local view = Matrix()
   view:Translate(Vector(-14422,14973,4) - Vector(-14638,11969,-1102))
@@ -151,6 +162,9 @@ hook.Add("PostDrawOpaqueRenderables", "se_render_map", function()
   view:Translate(se_ship.position)
   -- First we draw skybox
   se_draw_skybox()
+  render.OverrideDepthEnable( true, true )
+
+
   -- After skybox, we draw objects
   for k, v in pairs(se_game_state.Game_Map) do
     -- For evety body type we use different render functions
@@ -158,11 +172,14 @@ hook.Add("PostDrawOpaqueRenderables", "se_render_map", function()
       se_draw_star(v.size, v.position, v.color or Color(0, 0, 0) )
       se_star_color = v.color
       se_star_position = v.position
-    elseif v.body_type == BODY_TYPE_ASTEROID then
+    elseif v.body_type == BODY_TYPE_ASTEROID and !player_on_planet then
       se_draw_asteroid(v, view)
-    elseif v.body_type == BODY_TYPE_PLANET then
-      se_draw_planet(v.size, v.position, v.color, v.planet_type)
+    elseif v.body_type == BODY_TYPE_PLANET and !player_on_planet then
+      se_draw_planet(v)
     end
   end
   --se_draw_perlin_squrere(view)
+  render.OverrideDepthEnable( false, false )
+  if !player_on_planet then return end
+  se_draw_surface()
 end)
